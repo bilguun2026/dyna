@@ -105,3 +105,6 @@ class Cell(models.Model):
 
     def __str__(self):
         return f"Cell for Column {self.column.name} in Table API {self.table_api.table.name}"
+    
+class Test(models.Model):
+    name = models.CharField(max_length=255)
