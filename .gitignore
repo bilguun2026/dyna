@@ -1,0 +1,5 @@
+/uploads
+.env
+/migrations
+/__pychache__
+__init__.py

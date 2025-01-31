@@ -1,0 +1,9 @@
+{% extends "admin/base_site.html" %} {% block content %}
+<h1>Select a Table</h1>
+<p>Please select a table before creating an API.</p>
+
+<form method="post">
+  {% csrf_token %} {{ form.as_p }}
+  <input type="submit" value="Proceed" />
+</form>
+{% endblock %}
