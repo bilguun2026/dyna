@@ -108,3 +108,4 @@ class Cell(models.Model):
     
 class Test(models.Model):
     name = models.CharField(max_length=255)
+    phone = models.IntegerField()
