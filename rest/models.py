@@ -19,9 +19,40 @@ class User(AbstractUser):
         return self.username
 
 
+PROJECT_STATUS_CHOICES = [
+    ('pending', 'Pending'),
+    ('active', 'Active'),
+    ('completed', 'Completed'),
+    ('cancelled', 'Cancelled'),
+]
+
+# Define choice fields for job priority.
+JOB_PRIORITY_CHOICES = [
+    ('low', 'Low'),
+    ('normal', 'Normal'),
+    ('high', 'High'),
+    ('critical', 'Critical'),
+]
+
+# Define choice fields for job status.
+JOB_STATUS_CHOICES = [
+    ('open', 'Open'),
+    ('in_progress', 'In Progress'),
+    ('completed', 'Completed'),
+    ('on_hold', 'On Hold'),
+    ('cancelled', 'Cancelled'),
+]
+
+
 class Company(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255, db_index=True)
+    address = models.TextField(blank=True)
+    phone = models.CharField(max_length=50, blank=True)
+    email = models.EmailField(blank=True)
+    website = models.URLField(blank=True)
+    established_date = models.DateField(null=True, blank=True)
+    description = models.TextField(blank=True)
 
     def __str__(self):
         return self.name
@@ -30,25 +61,59 @@ class Company(models.Model):
 class Project(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255, db_index=True)
+    description = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    company = models.ForeignKey(
-        'Company', on_delete=models.CASCADE, related_name="projects"
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
+    status = models.CharField(
+        max_length=50,
+        choices=PROJECT_STATUS_CHOICES,
+        default='pending'
     )
+    budget = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True)
+    company = models.ForeignKey(
+        'Company',
+        on_delete=models.CASCADE,
+        related_name="projects"
+    )
+
+    def __str__(self):
+        return self.name
 
 
 class Job(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255, db_index=True)
+    description = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    due_date = models.DateField(null=True, blank=True)
+    priority = models.CharField(
+        max_length=50,
+        choices=JOB_PRIORITY_CHOICES,
+        default='normal'
+    )
+    status = models.CharField(
+        max_length=50,
+        choices=JOB_STATUS_CHOICES,
+        default='open'
+    )
     project = models.ForeignKey(
-        'Project', on_delete=models.CASCADE, related_name="jobs"
+        'Project',
+        on_delete=models.CASCADE,
+        related_name="jobs"
     )
     advisorCompanies = models.ManyToManyField(
-        'Company', related_name="advised_jobs"
+        'Company',
+        related_name="advised_jobs"
     )
     contractorCompanies = models.ManyToManyField(
-        'Company', related_name="contracted_jobs"
+        'Company',
+        related_name="contracted_jobs"
     )
+
+    def __str__(self):
+        return self.name
 
 
 class Table(models.Model):
@@ -119,6 +184,7 @@ class Cell(models.Model):
     column = models.ForeignKey(
         'Column', on_delete=models.CASCADE, related_name="column_cells"
     )
+    required = models.BooleanField(default=True)
     value = models.TextField(blank=True, default='')
     file = models.FileField(upload_to='uploads/files/', blank=True, null=True)
     image = models.ImageField(

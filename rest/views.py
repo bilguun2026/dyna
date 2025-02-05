@@ -36,9 +36,8 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     pagination_class = LargeDataPagination
-    # Uncomment below if you want to enforce authentication:
-    # permission_classes = [IsAuthenticated]
-    # authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
 
 # ------------------------------------------------------------------------------
 # Table ViewSet
@@ -53,6 +52,8 @@ class TableViewSet(viewsets.ModelViewSet):
     filterset_fields = ['name', 'created_at']
     search_fields = ['name']
     ordering_fields = ['name', 'created_at']
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
 
 # ------------------------------------------------------------------------------
 # Column ViewSet
@@ -65,6 +66,8 @@ class ColumnViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['name', 'data_type']
     ordering_fields = ['name', 'data_type']
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
 
 # ------------------------------------------------------------------------------
 # TableApi ViewSet
@@ -78,6 +81,7 @@ class TableApiViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
 
+
 # ------------------------------------------------------------------------------
 # Cell ViewSet
 # ------------------------------------------------------------------------------
@@ -87,8 +91,8 @@ class CellViewSet(viewsets.ModelViewSet):
     queryset = Cell.objects.select_related(
         'column', 'table_api').prefetch_related('table_api__user')
     serializer_class = CellSerializer
-    # Uncomment if you want to enforce authentication:
-    # permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
 
 # ------------------------------------------------------------------------------
 # Company ViewSet (new)
@@ -103,6 +107,8 @@ class CompanyViewSet(viewsets.ModelViewSet):
     filterset_fields = ['name']
     search_fields = ['name']
     ordering_fields = ['name']
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
 
 # ------------------------------------------------------------------------------
 # Project ViewSet (new)
@@ -117,6 +123,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
     filterset_fields = ['name', 'created_at']
     search_fields = ['name']
     ordering_fields = ['name', 'created_at']
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
 
 # ------------------------------------------------------------------------------
 # Job ViewSet (new)
@@ -132,6 +140,8 @@ class JobViewSet(viewsets.ModelViewSet):
     filterset_fields = ['name', 'created_at']
     search_fields = ['name']
     ordering_fields = ['name', 'created_at']
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
 
 # ------------------------------------------------------------------------------
 # WebSocket API View

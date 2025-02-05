@@ -165,6 +165,7 @@ class JobSerializer(serializers.ModelSerializer):
     contractorCompanies_ids = serializers.PrimaryKeyRelatedField(
         queryset=Company.objects.all(), many=True, source='contractorCompanies', write_only=True
     )
+    progress = serializers.SerializerMethodField()
 
     class Meta:
         model = Job
@@ -174,6 +175,10 @@ class JobSerializer(serializers.ModelSerializer):
             'advisorCompanies', 'advisorCompanies_ids',
             'contractorCompanies', 'contractorCompanies_ids'
         ]
+
+    def get_progress(self, obj):
+        completed_steps = obj.table_apis.count()
+        return completed_steps
 
     def create(self, validated_data):
         # Pop off many-to-many data from the validated data
