@@ -1,5 +1,5 @@
 /uploads
 .env
-/migrations
+migrations
 /__pychache__
 __init__.py

@@ -4,7 +4,6 @@ from rest_framework.routers import DefaultRouter
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from rest_framework import permissions
-from rest.views import UserViewSet, TableViewSet, ColumnViewSet, TableApiViewSet, CellViewSet, WebSocketAPIView
 from django.conf import settings
 from django.conf.urls.static import static
 from rest_framework_simplejwt.views import (
@@ -12,15 +11,31 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 
-# Router setup for ModelViewSet
+# Import all your viewsets, including the new ones.
+from rest.views import (
+    UserViewSet,
+    TableViewSet,
+    ColumnViewSet,
+    TableApiViewSet,
+    CellViewSet,
+    CompanyViewSet,
+    ProjectViewSet,
+    JobViewSet,
+    WebSocketAPIView
+)
+
+# Set up the router for ModelViewSets.
 router = DefaultRouter()
 router.register(r'users', UserViewSet, basename='user')
 router.register(r'tables', TableViewSet, basename='table')
 router.register(r'columns', ColumnViewSet, basename='column')
 router.register(r'table-apis', TableApiViewSet, basename='table-api')
 router.register(r'cells', CellViewSet, basename='cell')
+router.register(r'companies', CompanyViewSet, basename='company')
+router.register(r'projects', ProjectViewSet, basename='project')
+router.register(r'jobs', JobViewSet, basename='job')
 
-# Swagger/OpenAPI schema view
+# Swagger/OpenAPI schema view.
 schema_view = get_schema_view(
     openapi.Info(
         title="Dynamic Table API",

@@ -3,19 +3,35 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.forms import BaseInlineFormSet
 from django.utils.html import format_html
-from .models import User, Table, Column, TableApi, Cell, Option
 from django.http import HttpResponseRedirect
-from django.urls import path
+from django.urls import path, reverse
 from django.shortcuts import render, redirect
-from django.urls import reverse
-# Option Inline Admin
+
+from .models import (
+    User, Table, Column, TableApi, Cell, Option,
+    Company, Project, Job
+)
+
+# ------------------------------------------------------------------------------
+# Option Inline Admin (for managing Option objects within a Column)
+# ------------------------------------------------------------------------------
 
 
 class OptionInline(admin.TabularInline):
     model = Option
     extra = 1  # Number of extra forms to show
 
+# If you prefer a standalone Option admin, uncomment the following:
+#
+# class OptionAdmin(admin.ModelAdmin):
+#     list_display = ('id', 'value', 'column')
+#     search_fields = ('value',)
+#
+# admin.site.register(Option, OptionAdmin)
+
+# ------------------------------------------------------------------------------
 # Column Admin
+# ------------------------------------------------------------------------------
 
 
 class ColumnAdmin(admin.ModelAdmin):
@@ -25,12 +41,14 @@ class ColumnAdmin(admin.ModelAdmin):
     inlines = [OptionInline]
 
 
-# Unregister Column first if it's already registered to prevent duplication
+# Unregister Column first if it's already registered to prevent duplication.
 if Column in admin.site._registry:
     admin.site.unregister(Column)
 admin.site.register(Column, ColumnAdmin)
 
+# ------------------------------------------------------------------------------
 # Custom User Admin
+# ------------------------------------------------------------------------------
 
 
 class CustomUserAdmin(UserAdmin):
@@ -45,51 +63,49 @@ class CustomUserAdmin(UserAdmin):
 
 admin.site.register(User, CustomUserAdmin)
 
-# Column Inline Admin for Table
+# ------------------------------------------------------------------------------
+# Column Inline for Table (to show related columns in the Table admin)
+# ------------------------------------------------------------------------------
 
 
 class ColumnInline(admin.TabularInline):
     model = Column
     extra = 1  # Controls how many extra rows are displayed
 
-# Inline admin for Cells within TableApi
+# ------------------------------------------------------------------------------
+# Cell Inline FormSet & Inline for TableApi
+# ------------------------------------------------------------------------------
 
 
 class CellInlineFormSet(BaseInlineFormSet):
     def save_new(self, form, commit=True):
-        # This is called to save objects for new forms in the formset
         return super().save_new(form, commit=commit)
 
     def save_existing(self, form, instance, commit=True):
-        # This is called to save objects for existing forms in the formset
         return super().save_existing(form, instance, commit=commit)
 
 
 class CellInline(admin.TabularInline):
     model = Cell
-    extra = 0  # Don't add extra empty fields, only show real data
+    extra = 0  # Show only existing data
 
     def get_queryset(self, request):
-        """Ensure that when a TableApi is created, its cells appear automatically."""
         qs = super().get_queryset(request)
-
-        # Check if we're in the "add" view and a table is selected
+        # Check if we're in the add view and a table is selected via GET param
         table_id = request.GET.get('table')
         if table_id:
             table = Table.objects.get(pk=table_id)
-
             # Create the TableApi instance if not yet created
             table_api, created = TableApi.objects.get_or_create(
-                table=table, user=request.user)
-            # Ensure missing cells are created
-
-            # Fetch and return the related cells for the selected table
+                table=table, user=request.user
+            )
+            # Return cells related to the selected table's API
             return Cell.objects.filter(table_api=table_api)
-
         return qs
 
-
-# Admin for Table
+# ------------------------------------------------------------------------------
+# Table Admin
+# ------------------------------------------------------------------------------
 
 
 class TableAdmin(admin.ModelAdmin):
@@ -104,7 +120,9 @@ class TableAdmin(admin.ModelAdmin):
 
 admin.site.register(Table, TableAdmin)
 
-# Admin for TableApi
+# ------------------------------------------------------------------------------
+# TableApi Admin with Custom Table Selection
+# ------------------------------------------------------------------------------
 
 
 class TableApiAdmin(admin.ModelAdmin):
@@ -117,10 +135,10 @@ class TableApiAdmin(admin.ModelAdmin):
             path('select-table/', self.admin_site.admin_view(self.select_table),
                  name='rest_tableapi_select_table'),
         ]
-        return custom_urls + urls  # Ensures custom URLs appear first
+        return custom_urls + urls
 
     def select_table(self, request):
-        """Custom view for table selection before proceeding to create TableApi"""
+        """Custom view for table selection before proceeding to create TableApi."""
         if request.method == 'POST':
             form = TableSelectionForm(request.POST)
             if form.is_valid():
@@ -134,26 +152,26 @@ class TableApiAdmin(admin.ModelAdmin):
     def get_form(self, request, obj=None, **kwargs):
         """Pre-fill the Table field when creating a new TableApi."""
         form = super().get_form(request, obj, **kwargs)
-
         if obj is None and 'table' in request.GET:
             table_id = request.GET['table']
             table = Table.objects.get(pk=table_id)
-            form.base_fields['table'].initial = table  # Auto-fill table field
-
+            form.base_fields['table'].initial = table
         return form
 
     def add_view(self, request, form_url='', extra_context=None):
         """Ensure user selects a table before proceeding to TableApi creation."""
         if 'table' not in request.GET:
-            # Redirect to table selection
             return HttpResponseRedirect(reverse('admin:rest_tableapi_select_table'))
-
         extra_context = extra_context or {}
         extra_context['table_id'] = request.GET['table']
         return super().add_view(request, form_url, extra_context)
 
 
 admin.site.register(TableApi, TableApiAdmin)
+
+# ------------------------------------------------------------------------------
+# Cell Admin
+# ------------------------------------------------------------------------------
 
 
 class CellAdmin(admin.ModelAdmin):
@@ -175,3 +193,57 @@ class CellAdmin(admin.ModelAdmin):
 
 
 admin.site.register(Cell, CellAdmin)
+
+# ------------------------------------------------------------------------------
+# New Admin for Company, Project, and Job
+# ------------------------------------------------------------------------------
+# Company Admin
+
+
+class CompanyAdmin(admin.ModelAdmin):
+    list_display = ('name',)
+    search_fields = ('name',)
+    ordering = ('name',)
+
+
+admin.site.register(Company, CompanyAdmin)
+
+# Project Admin
+
+
+class ProjectAdmin(admin.ModelAdmin):
+    list_display = ('name', 'company', 'created_at')
+    search_fields = ('name',)
+    list_filter = ('company', 'created_at')
+    ordering = ('name',)
+
+
+admin.site.register(Project, ProjectAdmin)
+
+# Job Admin
+
+
+class JobAdmin(admin.ModelAdmin):
+    list_display = (
+        'name',
+        'project',
+        'created_at',
+        'get_advisor_companies',
+        'get_contractor_companies'
+    )
+    search_fields = ('name',)
+    list_filter = ('project', 'created_at')
+    ordering = ('name',)
+    # Use filter_horizontal for managing many-to-many fields in the admin.
+    filter_horizontal = ('advisorCompanies', 'contractorCompanies',)
+
+    def get_advisor_companies(self, obj):
+        return ", ".join([company.name for company in obj.advisorCompanies.all()])
+    get_advisor_companies.short_description = "Advisor Companies"
+
+    def get_contractor_companies(self, obj):
+        return ", ".join([company.name for company in obj.contractorCompanies.all()])
+    get_contractor_companies.short_description = "Contractor Companies"
+
+
+admin.site.register(Job, JobAdmin)

@@ -1,8 +1,12 @@
-from optparse import Option
 from rest_framework import serializers
 from django.contrib.auth.hashers import make_password
-from .models import User, Table, Column, TableApi, Cell
+from .models import (
+    User, Company, Project, Job,
+    Table, Column, Option, TableApi, Cell
+)
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
+# ----- USER SERIALIZER -----
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -25,13 +29,23 @@ class UserSerializer(serializers.ModelSerializer):
         return super().update(instance, validated_data)
 
 
+# ----- COMPANY SERIALIZER -----
+class CompanySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Company
+        fields = ['id', 'name']
+
+
+# ----- OPTION SERIALIZER -----
 class OptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Option
         fields = ['id', 'value']
 
 
+# ----- COLUMN SERIALIZER -----
 class ColumnSerializer(serializers.ModelSerializer):
+    # Only include options if the column is of type 'select'
     options = serializers.SerializerMethodField()
 
     class Meta:
@@ -40,12 +54,14 @@ class ColumnSerializer(serializers.ModelSerializer):
 
     def get_options(self, obj):
         if obj.data_type == 'select':
-            options = Option.objects.filter(column=obj)
+            options = obj.options.all()
             return OptionSerializer(options, many=True).data
         return None
 
 
+# ----- TABLE SERIALIZER -----
 class TableSerializer(serializers.ModelSerializer):
+    # Use the nested ColumnSerializer to show related columns
     columns = ColumnSerializer(many=True, read_only=True)
 
     class Meta:
@@ -53,6 +69,7 @@ class TableSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'created_at', 'columns']
 
 
+# ----- CELL SERIALIZER -----
 class CellSerializer(serializers.ModelSerializer):
     class Meta:
         model = Cell
@@ -67,10 +84,10 @@ class CellSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({
                     'value': f"Value '{value}' is not a valid option for column '{column.name}'."
                 })
-
         return data
 
 
+# ----- TABLE API SERIALIZER -----
 class TableApiSerializer(serializers.ModelSerializer):
     api_cells = CellSerializer(many=True)
     children = serializers.SerializerMethodField()
@@ -80,56 +97,99 @@ class TableApiSerializer(serializers.ModelSerializer):
         fields = ['id', 'table', 'user', 'api_cells', 'children']
 
     def get_children(self, obj):
-        # This method fetches and serializes child TableApis
-        # Using the related name 'children' set in the ForeignKey
+        # Recursively serialize child TableApis
         children = obj.children.all()
-        # Recursive serialization
         return TableApiSerializer(children, many=True).data
 
     def create(self, validated_data):
-        api_cells_data = validated_data.pop(
-            'api_cells', [])  # Fix related name
+        api_cells_data = validated_data.pop('api_cells', [])
         table_api = TableApi.objects.create(**validated_data)
-
-        # Bulk create cells related to the TableApi instance
         cell_instances = [Cell(table_api=table_api, **cell_data)
                           for cell_data in api_cells_data]
         Cell.objects.bulk_create(cell_instances)
-
         return table_api
 
     def update(self, instance, validated_data):
-        api_cells_data = validated_data.pop(
-            'api_cells', [])  # Fix related name
-
-        # Update main instance fields
+        api_cells_data = validated_data.pop('api_cells', [])
         instance.table = validated_data.get('table', instance.table)
         instance.user = validated_data.get('user', instance.user)
         instance.save()
 
-        # Get existing related cells
+        # Remove cells that are not in the incoming data.
         existing_ids = set(instance.api_cells.values_list('id', flat=True))
         incoming_ids = {cell_data.get(
             'id') for cell_data in api_cells_data if 'id' in cell_data}
-
-        # DELETE: Remove old cells that are not in the incoming data
         to_delete_ids = existing_ids - incoming_ids
         Cell.objects.filter(id__in=to_delete_ids).delete()
 
-        # UPDATE / CREATE: Process incoming cell data
-        new_cells = []
+        # Update or create cells
         for cell_data in api_cells_data:
             cell_id = cell_data.get('id')
-            if cell_id and Cell.objects.filter(id=cell_id).exists():
+            if cell_id and Cell.objects.filter(id=cell_id, table_api=instance).exists():
                 cell = Cell.objects.get(id=cell_id, table_api=instance)
                 for key, value in cell_data.items():
                     setattr(cell, key, value)
                 cell.save()
             else:
-                new_cells.append(Cell(table_api=instance, **cell_data))
+                Cell.objects.create(table_api=instance, **cell_data)
+        return instance
 
-        # Bulk create new cells (optimized for performance)
-        if new_cells:
-            Cell.objects.bulk_create(new_cells)
 
+# ----- PROJECT SERIALIZER -----
+class ProjectSerializer(serializers.ModelSerializer):
+    # Nested representation of the Company; for writes, use company_id.
+    company = CompanySerializer(read_only=True)
+    company_id = serializers.PrimaryKeyRelatedField(
+        queryset=Company.objects.all(), source='company', write_only=True
+    )
+
+    class Meta:
+        model = Project
+        fields = ['id', 'name', 'created_at', 'company', 'company_id']
+
+
+# ----- JOB SERIALIZER -----
+class JobSerializer(serializers.ModelSerializer):
+    # For the project relationship, nest the project details
+    project = ProjectSerializer(read_only=True)
+    project_id = serializers.PrimaryKeyRelatedField(
+        queryset=Project.objects.all(), source='project', write_only=True
+    )
+    # For many-to-many relationships, provide nested read-only representations...
+    advisorCompanies = CompanySerializer(many=True, read_only=True)
+    contractorCompanies = CompanySerializer(many=True, read_only=True)
+    # ... and write-only fields to accept lists of IDs.
+    advisorCompanies_ids = serializers.PrimaryKeyRelatedField(
+        queryset=Company.objects.all(), many=True, source='advisorCompanies', write_only=True
+    )
+    contractorCompanies_ids = serializers.PrimaryKeyRelatedField(
+        queryset=Company.objects.all(), many=True, source='contractorCompanies', write_only=True
+    )
+
+    class Meta:
+        model = Job
+        fields = [
+            'id', 'name', 'created_at',
+            'project', 'project_id',
+            'advisorCompanies', 'advisorCompanies_ids',
+            'contractorCompanies', 'contractorCompanies_ids'
+        ]
+
+    def create(self, validated_data):
+        # Pop off many-to-many data from the validated data
+        advisor_companies = validated_data.pop('advisorCompanies', [])
+        contractor_companies = validated_data.pop('contractorCompanies', [])
+        job = Job.objects.create(**validated_data)
+        job.advisorCompanies.set(advisor_companies)
+        job.contractorCompanies.set(contractor_companies)
+        return job
+
+    def update(self, instance, validated_data):
+        advisor_companies = validated_data.pop('advisorCompanies', None)
+        contractor_companies = validated_data.pop('contractorCompanies', None)
+        instance = super().update(instance, validated_data)
+        if advisor_companies is not None:
+            instance.advisorCompanies.set(advisor_companies)
+        if contractor_companies is not None:
+            instance.contractorCompanies.set(contractor_companies)
         return instance
