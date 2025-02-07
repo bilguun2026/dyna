@@ -33,7 +33,7 @@ class UserSerializer(serializers.ModelSerializer):
 class CompanySerializer(serializers.ModelSerializer):
     class Meta:
         model = Company
-        fields = ['id', 'name']
+        fields = "__all__"
 
 
 # ----- OPTION SERIALIZER -----
@@ -136,26 +136,10 @@ class TableApiSerializer(serializers.ModelSerializer):
 
 
 # ----- PROJECT SERIALIZER -----
-class ProjectSerializer(serializers.ModelSerializer):
-    # Nested representation of the Company; for writes, use company_id.
-    company = CompanySerializer(read_only=True)
-    company_id = serializers.PrimaryKeyRelatedField(
-        queryset=Company.objects.all(), source='company', write_only=True
-    )
-
-    class Meta:
-        model = Project
-        fields = ['id', 'name', 'created_at', 'company', 'company_id']
 
 
 # ----- JOB SERIALIZER -----
 class JobSerializer(serializers.ModelSerializer):
-    # For the project relationship, nest the project details
-    project = ProjectSerializer(read_only=True)
-    project_id = serializers.PrimaryKeyRelatedField(
-        queryset=Project.objects.all(), source='project', write_only=True
-    )
-    # For many-to-many relationships, provide nested read-only representations...
     advisorCompanies = CompanySerializer(many=True, read_only=True)
     contractorCompanies = CompanySerializer(many=True, read_only=True)
     # ... and write-only fields to accept lists of IDs.
@@ -171,9 +155,10 @@ class JobSerializer(serializers.ModelSerializer):
         model = Job
         fields = [
             'id', 'name', 'created_at',
-            'project', 'project_id',
+            'progress',
             'advisorCompanies', 'advisorCompanies_ids',
-            'contractorCompanies', 'contractorCompanies_ids'
+            'contractorCompanies', 'contractorCompanies_ids', 'description',
+            'due_date', 'priority', 'status'
         ]
 
     def get_progress(self, obj):
@@ -198,3 +183,17 @@ class JobSerializer(serializers.ModelSerializer):
         if contractor_companies is not None:
             instance.contractorCompanies.set(contractor_companies)
         return instance
+
+
+class ProjectSerializer(serializers.ModelSerializer):
+    # Nested representation of the Company; for writes, use company_id.
+    company = CompanySerializer(read_only=True)
+    company_id = serializers.PrimaryKeyRelatedField(
+        queryset=Company.objects.all(), source='company', write_only=True
+    )
+    jobs = JobSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Project
+        fields = ['id', 'name', 'created_at', 'company', 'company_id',
+                  'description', 'start_date', 'end_date', 'status', 'budget', 'jobs']

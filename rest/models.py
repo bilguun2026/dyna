@@ -184,7 +184,7 @@ class Cell(models.Model):
     column = models.ForeignKey(
         'Column', on_delete=models.CASCADE, related_name="column_cells"
     )
-    required = models.BooleanField(default=True)
+    is_required = models.BooleanField(default=True)
     value = models.TextField(blank=True, default='')
     file = models.FileField(upload_to='uploads/files/', blank=True, null=True)
     image = models.ImageField(

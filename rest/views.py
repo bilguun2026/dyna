@@ -140,7 +140,7 @@ class JobViewSet(viewsets.ModelViewSet):
     filterset_fields = ['name', 'created_at']
     search_fields = ['name']
     ordering_fields = ['name', 'created_at']
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
 
 # ------------------------------------------------------------------------------
