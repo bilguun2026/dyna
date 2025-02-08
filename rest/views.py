@@ -9,11 +9,11 @@ import asyncio
 import websockets
 
 from .models import (
-    User, Table, Column, TableApi, Cell,
+    TableCategory, User, Table, Column, TableApi, Cell,
     Company, Project, Job
 )
 from .serializers import (
-    UserSerializer, TableSerializer, ColumnSerializer, TableApiSerializer, CellSerializer,
+    TableCategorySerializer, UserSerializer, TableSerializer, ColumnSerializer, TableApiSerializer, CellSerializer,
     CompanySerializer, ProjectSerializer, JobSerializer
 )
 
@@ -80,6 +80,9 @@ class TableApiViewSet(viewsets.ModelViewSet):
     serializer_class = TableApiSerializer
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
 
 # ------------------------------------------------------------------------------
@@ -163,3 +166,13 @@ class WebSocketAPIView(APIView):
                 return Response({"message": greeting})
         except Exception as e:
             return Response({"error": str(e)}, status=500)
+
+# ------------------------------------------------------------------------------
+# TableCategory API View
+# ------------------------------------------------------------------------------
+
+
+class TableCategoryViewSet(viewsets.ModelViewSet):
+    queryset = TableCategory.objects.all().order_by(
+        'order_number')  # Optionally, order by a field
+    serializer_class = TableCategorySerializer

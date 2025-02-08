@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth.hashers import make_password
 from .models import (
-    User, Company, Project, Job,
+    JobTableCollection, TableCategory, User, Company, Project, Job,
     Table, Column, Option, TableApi, Cell
 )
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
@@ -71,20 +71,12 @@ class TableSerializer(serializers.ModelSerializer):
 
 # ----- CELL SERIALIZER -----
 class CellSerializer(serializers.ModelSerializer):
+    image = serializers.ImageField(required=False)
+    file = serializers.FileField(required=False)
+
     class Meta:
         model = Cell
         fields = ['id', 'column', 'value', 'file', 'image', 'created_at']
-
-    def validate(self, data):
-        column = data.get('column')
-        if column.data_type == 'select':
-            options = [option.value for option in column.options.all()]
-            value = data.get('value')
-            if value not in options:
-                raise serializers.ValidationError({
-                    'value': f"Value '{value}' is not a valid option for column '{column.name}'."
-                })
-        return data
 
 
 # ----- TABLE API SERIALIZER -----
@@ -136,37 +128,76 @@ class TableApiSerializer(serializers.ModelSerializer):
 
 
 # ----- PROJECT SERIALIZER -----
+class TableCategorySerializerForJob(serializers.ModelSerializer):
+    class Meta:
+        model = TableCategory
+        fields = [
+            'id',
+            'name',
+            'order_number'
+        ]
+
+
+class TableCategorySerializer(serializers.ModelSerializer):
+    tables = TableSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = TableCategory
+        fields = [
+            'id',
+            'name',
+            'order_number',
+            'tables'
+        ]
+
+
+class JobTableCollectionSerializer(serializers.ModelSerializer):
+    table_categories = serializers.SerializerMethodField()
+
+    class Meta:
+        model = JobTableCollection
+        fields = ['id', 'name', 'table_categories']
+
+    def get_table_categories(self, obj):
+        table_categories = obj.table_categories.all()
+        return TableCategorySerializerForJob(table_categories, many=True).data
 
 
 # ----- JOB SERIALIZER -----
 class JobSerializer(serializers.ModelSerializer):
+    # Read-only nested representation for related companies.
     advisorCompanies = CompanySerializer(many=True, read_only=True)
     contractorCompanies = CompanySerializer(many=True, read_only=True)
-    # ... and write-only fields to accept lists of IDs.
+
+    # Nested representation for JobTableCollection.
+    job_table_collection = JobTableCollectionSerializer(read_only=True)
+
+    # Write-only fields for accepting company IDs.
     advisorCompanies_ids = serializers.PrimaryKeyRelatedField(
         queryset=Company.objects.all(), many=True, source='advisorCompanies', write_only=True
     )
     contractorCompanies_ids = serializers.PrimaryKeyRelatedField(
         queryset=Company.objects.all(), many=True, source='contractorCompanies', write_only=True
     )
+
+    # Example additional field.
     progress = serializers.SerializerMethodField()
 
     class Meta:
         model = Job
         fields = [
-            'id', 'name', 'created_at',
-            'progress',
+            'id', 'name', 'created_at', 'progress',
             'advisorCompanies', 'advisorCompanies_ids',
-            'contractorCompanies', 'contractorCompanies_ids', 'description',
-            'due_date', 'priority', 'status'
+            'contractorCompanies', 'contractorCompanies_ids',
+            'description', 'due_date', 'priority', 'status',
+            'job_table_collection'
         ]
 
     def get_progress(self, obj):
-        completed_steps = obj.table_apis.count()
-        return completed_steps
+        return obj.table_apis.count()
 
     def create(self, validated_data):
-        # Pop off many-to-many data from the validated data
+        # Extract many-to-many data for companies.
         advisor_companies = validated_data.pop('advisorCompanies', [])
         contractor_companies = validated_data.pop('contractorCompanies', [])
         job = Job.objects.create(**validated_data)

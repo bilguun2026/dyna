@@ -82,6 +82,14 @@ class Project(models.Model):
         return self.name
 
 
+class JobTableCollection(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=255, db_index=True)
+
+    def __str__(self):
+        return self.name
+
+
 class Job(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255, db_index=True)
@@ -111,6 +119,21 @@ class Job(models.Model):
         'Company',
         related_name="contracted_jobs"
     )
+    job_table_collection = models.ForeignKey(
+        'JobTableCollection', on_delete=models.CASCADE, related_name="jobs", null=True, blank=True
+    )
+
+    def __str__(self):
+        return self.name
+
+
+class TableCategory(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=255, db_index=True)
+    order_number = models.IntegerField(null=True, blank=True)
+    job_table_collection = models.ForeignKey(
+        'JobTableCollection', on_delete=models.CASCADE, related_name="table_categories", null=True, blank=True
+    )
 
     def __str__(self):
         return self.name
@@ -119,7 +142,13 @@ class Job(models.Model):
 class Table(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255, db_index=True)
+    job_table_collection = models.ForeignKey(
+        'JobTableCollection', on_delete=models.CASCADE, related_name="tables", null=True, blank=True
+    )
     created_at = models.DateTimeField(auto_now_add=True)
+    category = models.ForeignKey(
+        'TableCategory', on_delete=models.CASCADE, related_name="tables", null=True, blank=True
+    )
 
     def __str__(self):
         return self.name
@@ -173,7 +202,7 @@ class TableApi(models.Model):
         'self', on_delete=models.CASCADE, related_name='children', null=True, blank=True
     )
     user = models.ForeignKey(settings.AUTH_USER_MODEL,
-                             on_delete=models.CASCADE, related_name="table_apis")
+                             on_delete=models.CASCADE, related_name="table_apis", blank=True, null=True)
 
 
 class Cell(models.Model):
@@ -191,23 +220,43 @@ class Cell(models.Model):
         upload_to='uploads/images/', blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
-    def clean(self):
-        if not self.pk:
-            return
+    # def clean(self):
+    #     # For columns of type "file" or "image":
+    #     if self.column.data_type in ['file', 'image']:
+    #         # Allow if either field is a non-empty string or is an UploadedFile
+    #         file_valid = False
+    #         image_valid = False
 
-        if self.column.data_type in ['file', 'image'] and not (self.file or self.image):
-            raise ValidationError(f"A file or image is required for data type {
-                                  self.column.data_type}.")
-        if self.column.data_type not in ['file', 'image'] and (self.file or self.image):
-            raise ValidationError(
-                "Uploading files or images is not allowed for this data type.")
-        if self.column.data_type not in ['file', 'image'] and not self.value:
-            raise ValidationError(f"Value is required for data type {
-                                  self.column.data_type}.")
+    #         # Check self.file: if it's a string (from JSON) and non-empty, consider it valid;
+    #         # if it's not a string, assume it’s an UploadedFile if it has a read method.
+    #         if isinstance(self.file, str):
+    #             file_valid = self.file.strip() != ""
+    #         elif self.file and hasattr(self.file, 'read'):
+    #             file_valid = True
 
-    def save(self, *args, **kwargs):
-        self.clean()  # Run validation before saving
-        super().save(*args, **kwargs)
+    #         if isinstance(self.image, str):
+    #             image_valid = self.image.strip() != ""
+    #         elif self.image and hasattr(self.image, 'read'):
+    #             image_valid = True
+
+    #         if not (file_valid or image_valid):
+    #             raise ValidationError(
+    #                 f"A file or image is required for data type {
+    #                     self.column.data_type}."
+    #             )
+    #     else:
+    #         # For non file/image types, ensure no file or image is provided and that a value is present.
+    #         if self.file or self.image:
+    #             raise ValidationError(
+    #                 "Uploading files or images is not allowed for this data type.")
+    #         if not self.value:
+    #             raise ValidationError(f"Value is required for data type {
+    #                                   self.column.data_type}.")
+
+    # def save(self, *args, **kwargs):
+    #     # Ensure full validation is run, even for new instances.
+    #     self.full_clean()
+    #     super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Cell for Column {self.column.name} in Table API {self.table_api.table.name}"

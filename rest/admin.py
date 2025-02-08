@@ -8,9 +8,21 @@ from django.urls import path, reverse
 from django.shortcuts import render, redirect
 
 from .models import (
-    User, Table, Column, TableApi, Cell, Option,
+    JobTableCollection, TableCategory, User, Table, Column, TableApi, Cell, Option,
     Company, Project, Job
 )
+
+
+@admin.register(TableCategory)
+class TableCategoryAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name')  # columns visible in the admin list page
+    search_fields = ('name',)
+
+
+@admin.register(JobTableCollection)
+class JobTableCollectionAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name')
+    search_fields = ('name',)
 
 # ------------------------------------------------------------------------------
 # Option Inline Admin (for managing Option objects within a Column)
