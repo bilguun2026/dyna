@@ -13,6 +13,8 @@ from rest_framework_simplejwt.views import (
 
 # Import all your viewsets, including the new ones.
 from rest.views import (
+    FileUploadViewSet,
+    ImageUploadViewSet,
     TableCategoryViewSet,
     UserViewSet,
     TableViewSet,
@@ -29,6 +31,8 @@ from rest.views import (
 router = DefaultRouter()
 router.register(r'users', UserViewSet, basename='user')
 router.register(r'tables', TableViewSet, basename='table')
+router.register(r'cell-files', FileUploadViewSet, basename='file')
+router.register(r'cell-images', ImageUploadViewSet, basename='image')
 router.register(r'table-categories', TableCategoryViewSet,
                 basename='table-category')
 router.register(r'columns', ColumnViewSet, basename='column')

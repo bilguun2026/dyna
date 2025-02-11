@@ -9,11 +9,11 @@ import asyncio
 import websockets
 
 from .models import (
-    TableCategory, User, Table, Column, TableApi, Cell,
+    File, Image, TableCategory, User, Table, Column, TableApi, Cell,
     Company, Project, Job
 )
 from .serializers import (
-    TableCategorySerializer, UserSerializer, TableSerializer, ColumnSerializer, TableApiSerializer, CellSerializer,
+    FileUploadSerializer, ImageUploadSerializer, TableCategorySerializer, UserSerializer, TableSerializer, ColumnSerializer, TableApiSerializer, CellSerializer,
     CompanySerializer, ProjectSerializer, JobSerializer
 )
 
@@ -176,3 +176,13 @@ class TableCategoryViewSet(viewsets.ModelViewSet):
     queryset = TableCategory.objects.all().order_by(
         'order_number')  # Optionally, order by a field
     serializer_class = TableCategorySerializer
+
+
+class FileUploadViewSet(viewsets.ModelViewSet):
+    queryset = File.objects.all()
+    serializer_class = FileUploadSerializer
+
+
+class ImageUploadViewSet(viewsets.ModelViewSet):
+    queryset = Image.objects.all()
+    serializer_class = ImageUploadSerializer

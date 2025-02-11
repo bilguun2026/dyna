@@ -9,8 +9,12 @@ from django.shortcuts import render, redirect
 
 from .models import (
     JobTableCollection, TableCategory, User, Table, Column, TableApi, Cell, Option,
-    Company, Project, Job
+    Company, Project, Job, File, Image
 )
+
+# -------------------------------------------------------------------------------
+# TableCategory Admin
+# -------------------------------------------------------------------------------
 
 
 @admin.register(TableCategory)
@@ -18,32 +22,28 @@ class TableCategoryAdmin(admin.ModelAdmin):
     list_display = ('id', 'name')  # columns visible in the admin list page
     search_fields = ('name',)
 
+# -------------------------------------------------------------------------------
+# JobTableCollection Admin
+# -------------------------------------------------------------------------------
+
 
 @admin.register(JobTableCollection)
 class JobTableCollectionAdmin(admin.ModelAdmin):
     list_display = ('id', 'name')
     search_fields = ('name',)
 
-# ------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 # Option Inline Admin (for managing Option objects within a Column)
-# ------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 
 
 class OptionInline(admin.TabularInline):
     model = Option
     extra = 1  # Number of extra forms to show
 
-# If you prefer a standalone Option admin, uncomment the following:
-#
-# class OptionAdmin(admin.ModelAdmin):
-#     list_display = ('id', 'value', 'column')
-#     search_fields = ('value',)
-#
-# admin.site.register(Option, OptionAdmin)
-
-# ------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 # Column Admin
-# ------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 
 
 class ColumnAdmin(admin.ModelAdmin):
@@ -58,9 +58,9 @@ if Column in admin.site._registry:
     admin.site.unregister(Column)
 admin.site.register(Column, ColumnAdmin)
 
-# ------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 # Custom User Admin
-# ------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 
 
 class CustomUserAdmin(UserAdmin):
@@ -75,18 +75,18 @@ class CustomUserAdmin(UserAdmin):
 
 admin.site.register(User, CustomUserAdmin)
 
-# ------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 # Column Inline for Table (to show related columns in the Table admin)
-# ------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 
 
 class ColumnInline(admin.TabularInline):
     model = Column
     extra = 1  # Controls how many extra rows are displayed
 
-# ------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 # Cell Inline FormSet & Inline for TableApi
-# ------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 
 
 class CellInlineFormSet(BaseInlineFormSet):
@@ -115,9 +115,9 @@ class CellInline(admin.TabularInline):
             return Cell.objects.filter(table_api=table_api)
         return qs
 
-# ------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 # Table Admin
-# ------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 
 
 class TableAdmin(admin.ModelAdmin):
@@ -132,9 +132,9 @@ class TableAdmin(admin.ModelAdmin):
 
 admin.site.register(Table, TableAdmin)
 
-# ------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 # TableApi Admin with Custom Table Selection
-# ------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 
 
 class TableApiAdmin(admin.ModelAdmin):
@@ -181,35 +181,68 @@ class TableApiAdmin(admin.ModelAdmin):
 
 admin.site.register(TableApi, TableApiAdmin)
 
-# ------------------------------------------------------------------------------
-# Cell Admin
-# ------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
+# Inlines for File and Image models
+# -------------------------------------------------------------------------------
+
+
+class FileInline(admin.TabularInline):
+    model = File
+    extra = 0
+
+
+class ImageInline(admin.TabularInline):
+    model = Image
+    extra = 0
+
+# -------------------------------------------------------------------------------
+# Cell Admin (Updated to include File and Image inlines)
+# -------------------------------------------------------------------------------
 
 
 class CellAdmin(admin.ModelAdmin):
     list_display = ('display_table_api', 'column', 'display_value')
     search_fields = ('column__name', 'value')
     list_filter = ('column__data_type',)
+    inlines = [FileInline, ImageInline]
 
     def display_table_api(self, obj):
         return f"{obj.table_api.table.name} - {obj.table_api.user.username}"
     display_table_api.short_description = 'Table API'
 
     def display_value(self, obj):
-        if obj.column.data_type == 'image' and obj.image:
-            return format_html('<img src="{}" width="50" height="50"/>', obj.image.url)
-        elif obj.column.data_type == 'file' and obj.file:
-            return format_html('<a href="{}">Download File</a>', obj.file.url)
+        # For file or image types, show a preview or download link.
+        if obj.column.data_type == 'image' and obj.images.exists():
+            final_image = obj.images.all()[0]
+            return format_html('<img src="{}" width="50" height="50"/>', final_image.image.url)
+        elif obj.column.data_type == 'file' and obj.files.exists():
+            final_file = obj.files.all()[0]
+            return format_html('<a href="{}">Download File</a>', final_file.file.url)
         return obj.value
     display_value.short_description = 'Value'
 
 
 admin.site.register(Cell, CellAdmin)
 
-# ------------------------------------------------------------------------------
-# New Admin for Company, Project, and Job
-# ------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
+# File and Image Admin (Standalone registrations)
+# -------------------------------------------------------------------------------
+
+
+@admin.register(File)
+class FileAdmin(admin.ModelAdmin):
+    list_display = ('id', 'cell', 'file', 'uploaded_at')
+    search_fields = ('cell__id', 'file')
+
+
+@admin.register(Image)
+class ImageAdmin(admin.ModelAdmin):
+    list_display = ('id', 'cell', 'image', 'uploaded_at')
+    search_fields = ('cell__id', 'image')
+
+# -------------------------------------------------------------------------------
 # Company Admin
+# -------------------------------------------------------------------------------
 
 
 class CompanyAdmin(admin.ModelAdmin):
@@ -220,7 +253,9 @@ class CompanyAdmin(admin.ModelAdmin):
 
 admin.site.register(Company, CompanyAdmin)
 
+# -------------------------------------------------------------------------------
 # Project Admin
+# -------------------------------------------------------------------------------
 
 
 class ProjectAdmin(admin.ModelAdmin):
@@ -232,7 +267,9 @@ class ProjectAdmin(admin.ModelAdmin):
 
 admin.site.register(Project, ProjectAdmin)
 
+# -------------------------------------------------------------------------------
 # Job Admin
+# -------------------------------------------------------------------------------
 
 
 class JobAdmin(admin.ModelAdmin):
@@ -246,7 +283,6 @@ class JobAdmin(admin.ModelAdmin):
     search_fields = ('name',)
     list_filter = ('project', 'created_at')
     ordering = ('name',)
-    # Use filter_horizontal for managing many-to-many fields in the admin.
     filter_horizontal = ('advisorCompanies', 'contractorCompanies',)
 
     def get_advisor_companies(self, obj):

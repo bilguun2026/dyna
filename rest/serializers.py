@@ -1,7 +1,8 @@
+from tkinter import Image
 from rest_framework import serializers
 from django.contrib.auth.hashers import make_password
 from .models import (
-    JobTableCollection, TableCategory, User, Company, Project, Job,
+    File, JobTableCollection, TableCategory, User, Company, Project, Job,
     Table, Column, Option, TableApi, Cell
 )
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
@@ -60,6 +61,8 @@ class ColumnSerializer(serializers.ModelSerializer):
 
 
 # ----- TABLE SERIALIZER -----
+
+
 class TableSerializer(serializers.ModelSerializer):
     # Use the nested ColumnSerializer to show related columns
     columns = ColumnSerializer(many=True, read_only=True)
@@ -68,18 +71,48 @@ class TableSerializer(serializers.ModelSerializer):
         model = Table
         fields = ['id', 'name', 'created_at', 'columns']
 
+# ----- FILE SERIALIZER -----
+
+
+class FileUploadSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = File
+        fields = ['cell', 'file']
+
+
+class FileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = File
+        fields = ['id', 'cell', 'file', 'uploaded_at']
+
+# ----- IMAGE SERIALIZER -----
+
+
+class ImageUploadSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Image
+        fields = ['cell', 'image']
+
+
+class ImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Image
+        fields = ['id', 'cell', 'image', 'uploaded_at']
 
 # ----- CELL SERIALIZER -----
+
+
 class CellSerializer(serializers.ModelSerializer):
-    image = serializers.ImageField(required=False, allow_null=True)
-    file = serializers.FileField(required=False, allow_null=True)
+    files = FileSerializer(many=True, read_only=True)
+    images = ImageSerializer(many=True, read_only=True)
 
     class Meta:
         model = Cell
-        fields = ['id', 'column', 'value', 'file', 'image', 'created_at']
-
+        fields = ['id', 'column', 'value', 'files', 'images', 'created_at']
 
 # ----- TABLE API SERIALIZER -----
+
+
 class TableApiSerializer(serializers.ModelSerializer):
     api_cells = CellSerializer(many=True)
     children = serializers.SerializerMethodField()

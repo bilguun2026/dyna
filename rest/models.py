@@ -208,55 +208,28 @@ class TableApi(models.Model):
 class Cell(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     table_api = models.ForeignKey(
-        'TableApi', on_delete=models.CASCADE, related_name="api_cells"
-    )
+        TableApi, on_delete=models.CASCADE, related_name="api_cells")
     column = models.ForeignKey(
-        'Column', on_delete=models.CASCADE, related_name="column_cells"
-    )
+        Column, on_delete=models.CASCADE, related_name="column_cells")
     is_required = models.BooleanField(default=True)
     value = models.TextField(blank=True, default='')
-    file = models.FileField(upload_to='uploads/files/', blank=True, null=True)
-    image = models.ImageField(
-        upload_to='uploads/images/', blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
-    # def clean(self):
-    #     # For columns of type "file" or "image":
-    #     if self.column.data_type in ['file', 'image']:
-    #         # Allow if either field is a non-empty string or is an UploadedFile
-    #         file_valid = False
-    #         image_valid = False
-
-    #         # Check self.file: if it's a string (from JSON) and non-empty, consider it valid;
-    #         # if it's not a string, assume it’s an UploadedFile if it has a read method.
-    #         if isinstance(self.file, str):
-    #             file_valid = self.file.strip() != ""
-    #         elif self.file and hasattr(self.file, 'read'):
-    #             file_valid = True
-
-    #         if isinstance(self.image, str):
-    #             image_valid = self.image.strip() != ""
-    #         elif self.image and hasattr(self.image, 'read'):
-    #             image_valid = True
-
-    #         if not (file_valid or image_valid):
-    #             raise ValidationError(
-    #                 f"A file or image is required for data type {
-    #                     self.column.data_type}."
-    #             )
-    #     else:
-    #         # For non file/image types, ensure no file or image is provided and that a value is present.
-    #         if self.file or self.image:
-    #             raise ValidationError(
-    #                 "Uploading files or images is not allowed for this data type.")
-    #         if not self.value:
-    #             raise ValidationError(f"Value is required for data type {
-    #                                   self.column.data_type}.")
-
-    # def save(self, *args, **kwargs):
-    #     # Ensure full validation is run, even for new instances.
-    #     self.full_clean()
-    #     super().save(*args, **kwargs)
-
     def __str__(self):
-        return f"Cell for Column {self.column.name} in Table API {self.table_api.table.name}"
+        return f"Cell for Column {self.column.name} in Table API {self.table_api}"
+
+
+class File(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    cell = models.ForeignKey(
+        Cell, on_delete=models.CASCADE, related_name="files")
+    file = models.FileField(upload_to='uploads/files/')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+
+class Image(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    cell = models.ForeignKey(
+        Cell, on_delete=models.CASCADE, related_name="images")
+    image = models.ImageField(upload_to='uploads/images/')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
