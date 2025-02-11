@@ -1,8 +1,7 @@
-from tkinter import Image
 from rest_framework import serializers
 from django.contrib.auth.hashers import make_password
 from .models import (
-    File, JobTableCollection, TableCategory, User, Company, Project, Job,
+    File, Image, JobTableCollection, TableCategory, User, Company, Project, Job,
     Table, Column, Option, TableApi, Cell
 )
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
