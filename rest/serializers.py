@@ -71,8 +71,8 @@ class TableSerializer(serializers.ModelSerializer):
 
 # ----- CELL SERIALIZER -----
 class CellSerializer(serializers.ModelSerializer):
-    image = serializers.ImageField(required=False)
-    file = serializers.FileField(required=False)
+    image = serializers.ImageField(required=False, allow_null=True)
+    file = serializers.FileField(required=False, allow_null=True)
 
     class Meta:
         model = Cell
