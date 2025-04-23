@@ -13,6 +13,7 @@ from rest_framework_simplejwt.views import (
 
 # Import all your viewsets, including the new ones.
 from rest.views import (
+    ExcelUploadView,
     FileUploadViewSet,
     ImageUploadViewSet,
     TableCategoryViewSet,
@@ -24,7 +25,10 @@ from rest.views import (
     CompanyViewSet,
     ProjectViewSet,
     JobViewSet,
-    WebSocketAPIView
+    OperationViewSet,  # New
+    FormulaStepViewSet,  # New
+    WebSocketAPIView,
+    get_columns_for_table
 )
 
 # Set up the router for ModelViewSets.
@@ -41,6 +45,9 @@ router.register(r'cells', CellViewSet, basename='cell')
 router.register(r'companies', CompanyViewSet, basename='company')
 router.register(r'projects', ProjectViewSet, basename='project')
 router.register(r'jobs', JobViewSet, basename='job')
+router.register(r'operations', OperationViewSet, basename='operation')  # New
+router.register(r'formula-steps', FormulaStepViewSet,
+                basename='formula-step')  # New
 
 # Swagger/OpenAPI schema view.
 schema_view = get_schema_view(
@@ -63,8 +70,11 @@ urlpatterns = [
          cache_timeout=0), name='schema-swagger-ui'),
     path('redoc/', schema_view.with_ui('redoc',
          cache_timeout=0), name='schema-redoc'),
+    # path('admin/rest/column/api/columns-for-table/',
+    #      get_columns_for_table, name='columns_for_table'),
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/upload/', ExcelUploadView.as_view(), name='excel_upload'),
     path('api/websocket-test/', WebSocketAPIView.as_view(), name='websocket-test'),
 ]
 

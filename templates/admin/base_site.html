@@ -1,0 +1,41 @@
+{% extends "admin/base.html" %}
+
+{% block title %}
+    {% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ site_title|default:_('Django site admin') }}
+{% endblock %}
+
+{% block branding %}
+    <div id="site-name">
+        <a href="{% url 'admin:index' %}">{{ site_header|default:_('Django administration') }}</a>
+    </div>
+    {% if user.is_anonymous %}
+        {% include "admin/color_theme_toggle.html" %}
+    {% endif %}
+{% endblock %}
+
+{% block nav-global %}{% endblock %}
+
+{% block extrahead %}
+    <!-- Include jQuery and jQuery UI for autocomplete -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+
+    <!-- Custom JavaScript for autocomplete in the formula input -->
+    <script>
+        $(document).ready(function() {
+            $('.formula-input').autocomplete({
+                source: function(request, response) {
+                    var columns = $(this.element).data('columns').split(',');
+                    var functions = $(this.element).data('functions').split(',');
+                    var term = request.term.toLowerCase();
+                    var suggestions = columns.filter(col => col.toLowerCase().includes(term))
+                        .concat(functions.filter(func => func.toLowerCase().includes(term)));
+                    response(suggestions);
+                },
+                minLength: 1,
+                autoFocus: true
+            });
+        });
+    </script>
+{% endblock %}

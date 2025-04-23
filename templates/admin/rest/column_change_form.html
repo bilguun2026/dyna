@@ -1,0 +1,74 @@
+{% extends "admin/change_form.html" %}
+{% load static %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <link rel="stylesheet" type="text/css" href="{% static 'admin/css/column_formula.css' %}">
+{% endblock %}
+
+{% block field_sets %}
+    {% if adminform %}
+        {% for fieldset in adminform %}
+            <fieldset class="module aligned {{ fieldset.classes }}">
+                {% if fieldset.name %}
+                    <h2>{{ fieldset.name }}</h2>
+                {% endif %}
+                {% if fieldset.description %}
+                    <div class="description">{{ fieldset.description|safe }}</div>
+                {% endif %}
+                {% for line in fieldset %}
+                    {% for field in line %}
+                        {% if field.field.name != 'formula_text' %}
+                            <div class="form-row{% if line.fields|length == 1 and field.is_readonly %} readonly{% endif %} {{ field.field.name }}">
+                                {{ field.field.errors }}
+                                {% if field.is_readonly %}
+                                    <label>{{ field.field.label }}</label>
+                                    <p>{{ field.contents }}</p>
+                                {% else %}
+                                    {{ field.field.label_tag }}
+                                    <div class="fieldBox{% if field.field.field.required %} required{% endif %}">
+                                        {{ field.field }}
+                                        {% if field.field.help_text %}
+                                            <div class="help">{{ field.field.help_text|safe }}</div>
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                {% endfor %}
+            </fieldset>
+        {% endfor %}
+
+        <fieldset class="module aligned">
+            <h2>Formula Editor</h2>
+            <div class="form-row">
+                <div class="formula-container">
+                    <label for="id_formula_text">Formula:</label>
+                    {{ adminform.form.formula_text.errors }}
+                    {{ adminform.form.formula_text }}
+                    <div id="formula-preview" class="formula-preview">
+                        <strong>Preview:</strong>
+                        <span id="preview-result">Enter a formula to see the preview</span>
+                    </div>
+                    <div class="calculator-buttons">
+                        <button type="button" class="calc-btn" data-value="+">+</button>
+                        <button type="button" class="calc-btn" data-value="-">-</button>
+                        <button type="button" class="calc-btn" data-value="*">×</button>
+                        <button type="button" class="calc-btn" data-value="/">÷</button>
+                        <button type="button" class="calc-btn" data-value="sqrt(">sqrt(</button>
+                        <button type="button" class="calc-btn" data-value="%">%</button>
+                        <button type="button" class="calc-btn" data-value="("">(</button>
+                        <button type="button" class="calc-btn" data-value=")">)</button>
+                    </div>
+                    <label for="id_selected_columns">Insert Columns:</label>
+                    {{ adminform.form.selected_columns.errors }}
+                    {{ adminform.form.selected_columns }}
+                    <div id="column-suggestions" class="suggestions"></div>
+                </div>
+            </div>
+        </fieldset>
+    {% else %}
+        <p>Error: Form not available.</p>
+    {% endif %}
+{% endblock %}
